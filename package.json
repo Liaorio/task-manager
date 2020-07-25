@@ -17,6 +17,8 @@
   },
   "homepage": "https://github.com/Liaorio/task-manager#readme",
   "dependencies": {
-    "mongodb": "^3.5.9"
+    "mongodb": "^3.5.9",
+    "mongoose": "^5.9.25",
+    "validator": "^13.1.1"
   }
 }
