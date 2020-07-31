@@ -1,10 +1,14 @@
 const express = require("express");
 const Task = require('../models/task');
+const auth = require('../middleware/auth');
 const router = new express.Router();
 
 
-router.post('/tasks', async (req, res) => {
-  const task = new Task(req.body);
+router.post('/tasks', auth, async (req, res) => {
+  const task = new Task({
+    ...req.body,
+    owner: req.user._id
+  });
   try {
     await task.save();
     res.status(201).send(task); // no need to add status if it is 200
@@ -13,42 +17,55 @@ router.post('/tasks', async (req, res) => {
   }
 })
 
-router.get('/tasks', async (req, res) => {
+router.get('/tasks', auth, async (req, res) => {
   try {
-    const tasks = await Task.find({});
-    res.send(tasks)
+    // const tasks = await Task.find({ owner: req.user._id });
+    await req.user.populate('tasks').execPopulate();  // connection is built in user model: virtual
+    // res.send(tasks);
+    res.send(req.user.tasks);
   } catch(e) {
     res.status(500).send(e);
   }
 })
 
-router.get('/tasks/:id', async (req, res) => {
+router.get('/tasks/:id', auth, async (req, res) => {
   const _id = req.params.id; // mongoose convert String id to ObjectId automatically
   try {
-    const task = await Task.findById(_id);
-    if(!task) return res.status(404).send('No user found');
+    const task = await Task.findOne({ _id, owner: req.user._id });
+    if(!task) return res.status(404).send('No task found');
     res.send(task);
   } catch(e) {
     res.status(500).send('Server Error');
   }
 })
 
-router.patch('/tasks/:id', async (req, res) => {
-  const _id = req.params.id; // mongoose convert String id to ObjectId automatically
-  // const allowedUpdates = ['description', 'completed']; // add this to prevent non-existing field update
+router.patch('/tasks/:id', auth, async (req, res) => {
+  const updates = Object.keys(req.body);
+  const allowedUpdates = ['description', 'completed'];
+  const isValid = updates.every(key => allowedUpdates.includes(key));
+
+  if(!isValid) return res.status(400).send({ error: 'Invalid updates' });
+
   try {
-    const task = await Task.findByIdAndUpdate(_id, req.body, { new: true, runValidators: true }); // return the updated user
-    if(!task) return res.status(404).send('No user found');
+    // const task = await Task.findByIdAndUpdate(_id, req.body, { new: true, runValidators: true }); // return the updated user
+    const task = await Task.findOne({ _id: req.params.id, owner: req.user._id })
+    if(!task) return res.status(404).send('No task found');
+    updates.forEach(key => {
+      task[key] = req.body[key];
+    })
+    await task.save();
     res.send(task);
   } catch(e) {
     res.status(500).send('Server Error');
   }
 })
 
-router.delete('/tasks/:id', async (req, res) => {
-  const _id = req.params.id;
+router.delete('/tasks/:id', auth, async (req, res) => {
   try {
-    await Task.findByIdAndDelete(_id);
+    // const task = await Task.findOne({ _id: req.params.id, owner: req.user._id });
+    const task = Task.findByIdAndDelete({ _id: req.params.id, owner: req.user._id })
+    if(!task) return res.status(404).send('No task found');
+    // await task.remove();
     res.send('Delete success!');
   } catch(e) {
     res.status(500).send(e);
