@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const validator = require('validator');
 const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const sharp = require('sharp');
 const Task = require('../models/task');
 
 const userSchema = new mongoose.Schema({
@@ -49,7 +50,10 @@ const userSchema = new mongoose.Schema({
       type: String,
       required: true
     }
-  }]
+  }],
+  avatar: {
+    type: Buffer
+  }
 }, {
   timestamps: true
 });
@@ -79,6 +83,7 @@ userSchema.methods.toJSON = function () {
   const userObj = user.toObject(); // turn document to a plain object
   delete userObj.tokens;
   delete userObj.password;
+  delete userObj.avatar;
 
   return userObj;
 }
