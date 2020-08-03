@@ -4,6 +4,7 @@ const router = new express.Router();
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const sharp = require("sharp");
+const { sendWelcomEmail } = require('../emails/account');
 
 const upload = multer({
   dest: 'avatars',
@@ -50,6 +51,7 @@ router.post('/users', async (req, res) => {
   const user = new User(req.body);
   try {
     await user.save();
+    sendWelcomEmail(user.email, user.name); // no need to use await here
     const token = await user.generateAuthToken();
     res.status(201).send({ user, token }); // no need to add status if it is 200
   } catch (e) {
